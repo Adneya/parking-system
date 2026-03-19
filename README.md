@@ -312,13 +312,13 @@ MIT License - feel free to use this project
 ## 👤 Author
 
 Adneya Khatate
-- GitHub: [@adneyakhatate](https://github.com/adneyakhatate)
+- GitHub: [@adneyakhatate](https://github.com/Adneya/)
 
 ## 📞 Support
 
 For issues and questions:
 - Create an issue on GitHub
-- Email: adneya.khatate@example.com
+- Email: adneya.khatate24@vit.edu
 
 ---
 
