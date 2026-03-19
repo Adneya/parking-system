@@ -1,0 +1,167 @@
+[
+  {
+    "city": "Mumbai",
+    "locality": "BKC",
+    "vehicleType": "car",
+    "preferCovered": true,
+    "preferEV": false,
+    "durationBucket": "medium",
+    "preferredLatitude": 19.0596,
+    "preferredLongitude": 72.8656,
+    "satisfactionScore": 94
+  },
+  {
+    "city": "Mumbai",
+    "locality": "Andheri",
+    "vehicleType": "suv",
+    "preferCovered": true,
+    "preferEV": false,
+    "durationBucket": "long",
+    "preferredLatitude": 19.1136,
+    "preferredLongitude": 72.8697,
+    "satisfactionScore": 89
+  },
+  {
+    "city": "Mumbai",
+    "locality": "Fort",
+    "vehicleType": "motorcycle",
+    "preferCovered": false,
+    "preferEV": false,
+    "durationBucket": "short",
+    "preferredLatitude": 18.9351,
+    "preferredLongitude": 72.8355,
+    "satisfactionScore": 81
+  },
+  {
+    "city": "Bengaluru",
+    "locality": "Whitefield",
+    "vehicleType": "ev",
+    "preferCovered": true,
+    "preferEV": true,
+    "durationBucket": "medium",
+    "preferredLatitude": 12.9698,
+    "preferredLongitude": 77.75,
+    "satisfactionScore": 97
+  },
+  {
+    "city": "Bengaluru",
+    "locality": "Electronic City",
+    "vehicleType": "car",
+    "preferCovered": true,
+    "preferEV": false,
+    "durationBucket": "long",
+    "preferredLatitude": 12.8399,
+    "preferredLongitude": 77.677,
+    "satisfactionScore": 91
+  },
+  {
+    "city": "Bengaluru",
+    "locality": "Koramangala",
+    "vehicleType": "motorcycle",
+    "preferCovered": false,
+    "preferEV": false,
+    "durationBucket": "short",
+    "preferredLatitude": 12.9352,
+    "preferredLongitude": 77.6245,
+    "satisfactionScore": 84
+  },
+  {
+    "city": "Delhi",
+    "locality": "Connaught Place",
+    "vehicleType": "car",
+    "preferCovered": true,
+    "preferEV": false,
+    "durationBucket": "medium",
+    "preferredLatitude": 28.6315,
+    "preferredLongitude": 77.2167,
+    "satisfactionScore": 92
+  },
+  {
+    "city": "Delhi",
+    "locality": "Saket",
+    "vehicleType": "suv",
+    "preferCovered": true,
+    "preferEV": false,
+    "durationBucket": "long",
+    "preferredLatitude": 28.5245,
+    "preferredLongitude": 77.2066,
+    "satisfactionScore": 86
+  },
+  {
+    "city": "Delhi",
+    "locality": "Karol Bagh",
+    "vehicleType": "motorcycle",
+    "preferCovered": false,
+    "preferEV": false,
+    "durationBucket": "short",
+    "preferredLatitude": 28.6519,
+    "preferredLongitude": 77.1909,
+    "satisfactionScore": 80
+  },
+  {
+    "city": "Pune",
+    "locality": "Hinjewadi",
+    "vehicleType": "ev",
+    "preferCovered": true,
+    "preferEV": true,
+    "durationBucket": "long",
+    "preferredLatitude": 18.5912,
+    "preferredLongitude": 73.7389,
+    "satisfactionScore": 95
+  },
+  {
+    "city": "Pune",
+    "locality": "Shivajinagar",
+    "vehicleType": "car",
+    "preferCovered": true,
+    "preferEV": false,
+    "durationBucket": "medium",
+    "preferredLatitude": 18.5308,
+    "preferredLongitude": 73.8475,
+    "satisfactionScore": 88
+  },
+  {
+    "city": "Pune",
+    "locality": "Kothrud",
+    "vehicleType": "motorcycle",
+    "preferCovered": false,
+    "preferEV": false,
+    "durationBucket": "short",
+    "preferredLatitude": 18.5074,
+    "preferredLongitude": 73.8077,
+    "satisfactionScore": 79
+  },
+  {
+    "city": "Hyderabad",
+    "locality": "Hitech City",
+    "vehicleType": "ev",
+    "preferCovered": true,
+    "preferEV": true,
+    "durationBucket": "medium",
+    "preferredLatitude": 17.4435,
+    "preferredLongitude": 78.3772,
+    "satisfactionScore": 96
+  },
+  {
+    "city": "Hyderabad",
+    "locality": "Gachibowli",
+    "vehicleType": "car",
+    "preferCovered": true,
+    "preferEV": false,
+    "durationBucket": "long",
+    "preferredLatitude": 17.4401,
+    "preferredLongitude": 78.3489,
+    "satisfactionScore": 90
+  },
+  {
+    "city": "Hyderabad",
+    "locality": "Secunderabad",
+    "vehicleType": "truck",
+    "preferCovered": false,
+    "preferEV": false,
+    "durationBucket": "medium",
+    "preferredLatitude": 17.4399,
+    "preferredLongitude": 78.4983,
+    "satisfactionScore": 78
+  }
+]
