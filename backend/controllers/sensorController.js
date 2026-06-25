@@ -91,30 +91,46 @@ exports.getFloorMap = async (req, res) => {
     const sensorMap = {};
     for (const sn of sensors) sensorMap[sn.spot.toString()] = sn;
 
-    const floorMap = spots.map(s => ({
-      _id:          s._id,
-      spotNumber:   s.name,
-      zone:         s.city,
-      floor:        0,
-      type:         'standard',
-      isOccupied:   (s.availableSpots || 0) <= 0,
-      isActive:     s.status === 'active',
-      hourlyRate:   s.hourlyRate,
-      amenities:    s.amenities,
-      address:      s.address,
-      city:         s.city,
-      location:     s.location,
-      availableSpots: s.availableSpots,
-      totalSpots:   s.totalSpots,
-      sensor: sensorMap[s._id.toString()] ? {
-        weightKg:      sensorMap[s._id.toString()].currentWeight,
-        inferredType:  sensorMap[s._id.toString()].inferredType,
-        batteryLevel:  sensorMap[s._id.toString()].batteryLevel,
-        lastUpdated:   sensorMap[s._id.toString()].lastUpdated,
-        sensorFaulty:  sensorMap[s._id.toString()].sensorFaulty,
-        avgOccupancy:  sensorMap[s._id.toString()].avgDailyOccupancy,
-      } : null,
-    }));
+    const floorMap = spots.map(s => {
+      const sensor = sensorMap[s._id.toString()] || null;
+      const totalSpots = Math.max(1, Number(s.totalSpots) || 1);
+      const rawAvailable = Number.isFinite(Number(s.availableSpots)) ? Number(s.availableSpots) : totalSpots;
+      const availableSpots = Math.max(0, Math.min(totalSpots, rawAvailable));
+      const occupiedFromAvailability = totalSpots - availableSpots;
+      const occupiedFromSensor = sensor?.isOccupied ? 1 : 0;
+      const occupiedSpots = Math.min(totalSpots, Math.max(occupiedFromAvailability, occupiedFromSensor));
+      const occupancyRate = totalSpots ? Math.round((occupiedSpots / totalSpots) * 100) : 0;
+
+      return {
+        _id:          s._id,
+        name:         s.name,
+        spotNumber:   s.name,
+        zone:         s.city,
+        floor:        0,
+        type:         'standard',
+        isOccupied:   occupiedSpots > 0,
+        isFull:       availableSpots <= 0,
+        isActive:     s.status === 'active',
+        hourlyRate:   s.hourlyRate,
+        amenities:    s.amenities,
+        address:      s.address,
+        city:         s.city,
+        location:     s.location,
+        availableSpots,
+        occupiedSpots,
+        totalSpots,
+        occupancyRate,
+        sensor: sensor ? {
+          weightKg:      sensor.currentWeight,
+          isOccupied:    sensor.isOccupied,
+          inferredType:  sensor.inferredType,
+          batteryLevel:  sensor.batteryLevel,
+          lastUpdated:   sensor.lastUpdated,
+          sensorFaulty:  sensor.sensorFaulty,
+          avgOccupancy:  sensor.avgDailyOccupancy,
+        } : null,
+      };
+    });
 
     res.json({ success: true, data: floorMap });
   } catch (err) {
@@ -162,16 +178,50 @@ exports.bulkUpdateSensors = async (req, res) => {
 // ─── GET /api/sensors/stats ───────────────────────────────────────────────────
 exports.getSensorStats = async (req, res) => {
   try {
-    const sensors = await SpotSensor.find({}).lean();
-    const total     = sensors.length;
-    const occupied  = sensors.filter(s => s.isOccupied).length;
-    const faulty    = sensors.filter(s => s.sensorFaulty).length;
-    const lowBat    = sensors.filter(s => s.batteryLevel < 20).length;
-    const byType    = {};
+    const [spots, sensors] = await Promise.all([
+      ParkingSpot.find({ status: 'active' }).lean(),
+      SpotSensor.find({}).lean(),
+    ]);
+
+    const sensorMap = {};
+    for (const sensor of sensors) {
+      if (sensor.spot) sensorMap[sensor.spot.toString()] = sensor;
+    }
+
+    let total = 0;
+    let occupied = 0;
+    let available = 0;
+    for (const spot of spots) {
+      const totalSpots = Math.max(1, Number(spot.totalSpots) || 1);
+      const rawAvailable = Number.isFinite(Number(spot.availableSpots)) ? Number(spot.availableSpots) : totalSpots;
+      const availableSpots = Math.max(0, Math.min(totalSpots, rawAvailable));
+      const sensorOccupied = sensorMap[spot._id.toString()]?.isOccupied ? 1 : 0;
+      const occupiedSpots = Math.min(totalSpots, Math.max(totalSpots - availableSpots, sensorOccupied));
+
+      total += totalSpots;
+      occupied += occupiedSpots;
+      available += totalSpots - occupiedSpots;
+    }
+
+    const faulty = sensors.filter(s => s.sensorFaulty).length;
+    const lowBat = sensors.filter(s => s.batteryLevel < 20).length;
+    const byType = {};
     for (const s of sensors) {
       byType[s.inferredType] = (byType[s.inferredType] || 0) + 1;
     }
-    res.json({ success: true, data: { total, occupied, available: total - occupied, faulty, lowBattery: lowBat, byVehicleType: byType } });
+    res.json({
+      success: true,
+      data: {
+        total,
+        occupied,
+        available,
+        occupancyRate: total ? Math.round((occupied / total) * 100) : 0,
+        faulty,
+        lowBattery: lowBat,
+        sensorTotal: sensors.length,
+        byVehicleType: byType,
+      },
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

@@ -8,6 +8,12 @@ import { createRentalBooking, checkRentalAvailability, confirmRentalPayment } fr
 const GLS = { background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(14px)', border: '1px solid rgba(255,255,255,0.08)' }
 const INPUT = { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff', padding: '10px 12px', borderRadius: '8px', fontSize: '14px' }
 
+const toDateInputValue = (date = new Date()) => {
+  const local = new Date(date)
+  local.setMinutes(local.getMinutes() - local.getTimezoneOffset())
+  return local.toISOString().split('T')[0]
+}
+
 function RentalBookingModal({ rental, onClose, onSuccess }) {
   const [step, setStep] = useState(1) // 1: dates, 2: details, 3: payment, 4: confirmation
   const [loading, setLoading] = useState(false)
@@ -216,7 +222,7 @@ function RentalBookingModal({ rental, onClose, onSuccess }) {
                       type="date"
                       value={dates.startDate}
                       onChange={e => setDates({ ...dates, startDate: e.target.value })}
-                      min={new Date().toISOString().split('T')[0]}
+                      min={toDateInputValue()}
                       style={INPUT}
                       className="w-full"
                     />
@@ -227,7 +233,7 @@ function RentalBookingModal({ rental, onClose, onSuccess }) {
                       type="date"
                       value={dates.endDate}
                       onChange={e => setDates({ ...dates, endDate: e.target.value })}
-                      min={dates.startDate || new Date().toISOString().split('T')[0]}
+                      min={dates.startDate || toDateInputValue()}
                       style={INPUT}
                       className="w-full"
                     />

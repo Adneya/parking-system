@@ -120,24 +120,26 @@ function SpotRow({ spot, onUpdateStatus, idx }) {
     catch (_) { toast.error('Update failed') }
     finally { setLoading(false) }
   }
-  const statusColor = spot.status === 'active' ? '#10b981' : spot.status === 'occupied' ? '#ef4444' : '#f59e0b'
+  const statusColor = spot.status === 'active' ? '#10b981' : spot.status === 'inactive' ? '#ef4444' : '#f59e0b'
   return (
     <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.03 }}
       className="border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors">
-      <td className="px-4 py-3 text-white font-semibold text-sm">{spot.spotNumber}</td>
-      <td className="px-4 py-3 text-gray-400 text-sm">{spot.zone}</td>
-      <td className="px-4 py-3 text-gray-400 text-xs capitalize">{spot.type}</td>
+      <td className="px-4 py-3">
+        <p className="text-white font-semibold text-sm">{spot.name || `Spot ${idx + 1}`}</p>
+        <p className="text-gray-500 text-xs truncate max-w-xs">{spot.address || 'No address'}</p>
+      </td>
+      <td className="px-4 py-3 text-gray-400 text-sm">{spot.city || '—'}</td>
+      <td className="px-4 py-3 text-gray-400 text-xs">{spot.availableSpots ?? 0}/{spot.totalSpots ?? 0} free</td>
       <td className="px-4 py-3">
         <span className="text-xs font-bold capitalize" style={{ color: statusColor }}>● {spot.status}</span>
       </td>
       <td className="px-4 py-3 text-gray-300 text-sm">₹{spot.hourlyRate}/hr</td>
       <td className="px-4 py-3">
-        <button onClick={toggle} disabled={loading || spot.status === 'occupied'}
+        <button onClick={toggle} disabled={loading}
           className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
           style={{
             background: spot.status === 'active' ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)',
             color:      spot.status === 'active' ? '#f59e0b' : '#10b981',
-            opacity:    spot.status === 'occupied' ? 0.4 : 1,
           }}>
           <FiEdit2 size={11} /> {spot.status === 'active' ? 'Maintenance' : 'Activate'}
         </button>
@@ -209,13 +211,35 @@ export default function AdminPanel() {
     toast.success(`Spot status → ${status}`)
   }
 
+  const dashboard = {
+    totalUsers: dash?.users?.total ?? dash?.totalUsers ?? 0,
+    newUsersToday: dash?.users?.newToday ?? dash?.newUsersToday ?? 0,
+    totalSpots: dash?.spots?.total ?? dash?.totalSpots ?? 0,
+    occupiedSpots: dash?.spots?.occupied ?? dash?.occupiedSpots ?? 0,
+    occupancyRate: dash?.spots?.occupancyRate ?? dash?.occupancyRate ?? 0,
+    revenueToday: dash?.revenue?.today ?? dash?.revenueToday ?? 0,
+    revenueMonth: dash?.revenue?.month ?? dash?.revenueMonth ?? 0,
+    activeBookings: dash?.bookings?.active ?? dash?.activeBookings ?? 0,
+    openAlerts: dash?.alerts?.open ?? dash?.openAlerts ?? 0,
+    activeRentals: dash?.rentals?.active ?? dash?.activeRentals ?? 0,
+    damageCount: dash?.damage?.today ?? dash?.damageCount ?? 0,
+  }
+
   // Prepare hourly chart data
   const hourlyData = dash?.hourlyOccupancy
-    ? dash.hourlyOccupancy.map((v, i) => ({ hour: `${i}:00`, occupancy: v }))
+    ? dash.hourlyOccupancy.map((v, i) => {
+        const hour = typeof v === 'object' ? v.hour : i
+        const bookingCount = typeof v === 'object' ? (v.bookings ?? 0) : v
+        const occupancy = dashboard.totalSpots
+          ? Math.min(100, Math.round((bookingCount / dashboard.totalSpots) * 100))
+          : bookingCount
+        return { hour: `${hour}:00`, occupancy, bookings: bookingCount }
+      })
     : []
 
-  const weeklyData = analytics?.daily
-    ? analytics.daily.map(d => ({ date: new Date(d.date).toLocaleDateString('en', { month: 'short', day: 'numeric' }), bookings: d.bookings, revenue: d.revenue }))
+  const analyticsDays = Array.isArray(analytics) ? analytics : analytics?.daily
+  const weeklyData = analyticsDays
+    ? analyticsDays.map(d => ({ date: new Date(d.date).toLocaleDateString('en', { month: 'short', day: 'numeric' }), bookings: d.bookings, revenue: d.revenue }))
     : []
 
   return (
@@ -272,14 +296,14 @@ export default function AdminPanel() {
                 <>
                   {/* KPI cards */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-                    <StatCard label="Total Users"    value={dash?.totalUsers}    color="#8b5cf6" icon={FiUsers}        delay={0}   sub={`+${dash?.newUsersToday ?? 0} today`} />
-                    <StatCard label="Parking Spots"  value={dash?.totalSpots}    color="#6366f1" icon={FiMapPin}       delay={0.05} sub={`${dash?.occupiedSpots ?? 0} occupied`} />
-                    <StatCard label="Occupancy"      value={`${dash?.occupancyRate ?? 0}%`} color="#f59e0b" icon={FiActivity} delay={0.1} />
-                    <StatCard label="Today Revenue"  value={`₹${dash?.revenueToday ?? 0}`} color="#10b981" icon={FiDollarSign} delay={0.15} sub={`₹${dash?.revenueMonth ?? 0} this month`} />
-                    <StatCard label="Active Bookings" value={dash?.activeBookings} color="#60a5fa" icon={FiCalendar}   delay={0.2} />
-                    <StatCard label="Open Alerts"    value={dash?.openAlerts}    color="#ef4444" icon={FiAlertTriangle} delay={0.25} />
-                    <StatCard label="Active Rentals" value={dash?.activeRentals} color="#a78bfa" icon={FiCheckCircle} delay={0.3} />
-                    <StatCard label="Damage Reports" value={dash?.damageCount}   color="#f97316" icon={FiAlertTriangle} delay={0.35} />
+                    <StatCard label="Total Users"    value={dashboard.totalUsers}    color="#8b5cf6" icon={FiUsers}        delay={0}   sub={`+${dashboard.newUsersToday} today`} />
+                    <StatCard label="Parking Spots"  value={dashboard.totalSpots}    color="#6366f1" icon={FiMapPin}       delay={0.05} sub={`${dashboard.occupiedSpots} occupied`} />
+                    <StatCard label="Occupancy"      value={`${dashboard.occupancyRate}%`} color="#f59e0b" icon={FiActivity} delay={0.1} />
+                    <StatCard label="Today Revenue"  value={`₹${dashboard.revenueToday}`} color="#10b981" icon={FiDollarSign} delay={0.15} sub={`₹${dashboard.revenueMonth} this month`} />
+                    <StatCard label="Active Bookings" value={dashboard.activeBookings} color="#60a5fa" icon={FiCalendar}   delay={0.2} />
+                    <StatCard label="Open Alerts"    value={dashboard.openAlerts}    color="#ef4444" icon={FiAlertTriangle} delay={0.25} />
+                    <StatCard label="Active Rentals" value={dashboard.activeRentals} color="#a78bfa" icon={FiCheckCircle} delay={0.3} />
+                    <StatCard label="Damage Reports" value={dashboard.damageCount}   color="#f97316" icon={FiAlertTriangle} delay={0.35} />
                   </div>
 
                   {/* Hourly occupancy chart */}
@@ -457,7 +481,7 @@ export default function AdminPanel() {
                   <table className="w-full">
                     <thead>
                       <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                        {['Spot #', 'Zone', 'Type', 'Status', 'Rate', 'Action'].map(h => (
+                        {['Spot Name', 'City', 'Capacity', 'Status', 'Rate', 'Action'].map(h => (
                           <th key={h} className="px-4 py-3 text-left text-gray-400 text-xs font-semibold uppercase tracking-wide">{h}</th>
                         ))}
                       </tr>

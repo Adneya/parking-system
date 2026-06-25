@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiBank, FiCheck, FiX, FiArrowLeft, FiLock, FiPhone } from 'react-icons/fi'
+import { FiCreditCard, FiCheck, FiX, FiArrowLeft, FiLock, FiPhone } from 'react-icons/fi'
 import { AuthContext } from '../context/AuthContext'
 import api from '../services/api'
 import toast from 'react-hot-toast'
@@ -142,7 +142,7 @@ const BankConnection = () => {
 
         <div className="flex items-center gap-3 mb-8">
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center">
-            <FiBank size={24} className="text-white" />
+            <FiCreditCard size={24} className="text-white" />
           </div>
           <div>
             <h1 className="text-3xl font-bold text-white">Bank Account Connection</h1>

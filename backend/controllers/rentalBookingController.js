@@ -7,6 +7,12 @@ const Rental = require('../models/Rental');
 const User = require('../models/User');
 const mongoose = require('mongoose');
 
+function startOfDay(date = new Date()) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 // ─── Helper: Check date overlap ────────────────────────────────────────────────
 async function hasDateConflict(rentalId, startDate, endDate, excludeBookingId = null) {
   const filter = {
@@ -44,7 +50,7 @@ exports.createBooking = async (req, res) => {
         message: 'Start date must be before end date' 
       });
     }
-    if (start < new Date()) {
+    if (startOfDay(start) < startOfDay()) {
       return res.status(400).json({ 
         success: false, 
         message: 'Cannot book dates in the past' 
@@ -236,6 +242,13 @@ exports.checkAvailability = async (req, res) => {
       return res.status(400).json({ 
         success: false, 
         message: 'Start date must be before end date' 
+      });
+    }
+
+    if (startOfDay(start) < startOfDay()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot check availability for past dates'
       });
     }
 

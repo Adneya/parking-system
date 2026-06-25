@@ -35,6 +35,8 @@ Thumbs.db
 
 # MongoDB
 /data/db/*
+.mongo-data/
+.mongo-log/
 
 # Vite
 .vite/

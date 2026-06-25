@@ -29,6 +29,28 @@ const TYPE_COLORS = {
   vip:         '#f97316',
 }
 
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
+const toNumber = (value, fallback = 0) => {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : fallback
+}
+const getSpotCapacity = (spot) => Math.max(1, toNumber(spot.totalSpots, 1))
+const getBaseAvailableSlots = (spot) => {
+  const capacity = getSpotCapacity(spot)
+  return clamp(toNumber(spot.availableSpots, capacity), 0, capacity)
+}
+const getOccupiedSlots = (spot) => {
+  const capacity = getSpotCapacity(spot)
+  const occupiedFromAvailability = capacity - getBaseAvailableSlots(spot)
+  const occupiedFromSensor = spot.sensor?.isOccupied ? 1 : 0
+  return clamp(Math.max(occupiedFromAvailability, occupiedFromSensor), 0, capacity)
+}
+const getAvailableSlots = (spot) => getSpotCapacity(spot) - getOccupiedSlots(spot)
+const getSpotOccupancyPct = (spot) => Math.round((getOccupiedSlots(spot) / getSpotCapacity(spot)) * 100)
+const hasOccupiedSlots = (spot) => getOccupiedSlots(spot) > 0
+const hasAvailableSlots = (spot) => getAvailableSlots(spot) > 0
+const isFaultySpot = (spot) => Boolean(spot.sensor?.sensorFaulty)
+
 function BatteryIcon({ level }) {
   const color = level > 50 ? '#10b981' : level > 20 ? '#f59e0b' : '#ef4444'
   return (
@@ -49,34 +71,42 @@ function PulseRing({ color }) {
 }
 
 function SpotTile({ spot }) {
-  const occupied = spot.sensor?.isOccupied || spot.isOccupied
-  const faulty   = spot.sensor?.sensorFaulty
+  const occupiedSlots = getOccupiedSlots(spot)
+  const availableSlots = getAvailableSlots(spot)
+  const capacity = getSpotCapacity(spot)
+  const occupied = occupiedSlots > 0
+  const full = availableSlots <= 0
+  const faulty = isFaultySpot(spot)
   const battery  = spot.sensor?.batteryLevel ?? 100
-  const weight   = spot.sensor?.currentWeight
+  const weight   = spot.sensor?.weightKg ?? spot.sensor?.currentWeight
   const inferred = spot.sensor?.inferredType || (occupied ? 'car' : 'empty')
-  const statusColor = faulty ? '#f59e0b' : occupied ? '#ef4444' : '#10b981'
+  const statusColor = faulty ? '#f59e0b' : full ? '#ef4444' : occupied ? '#f97316' : '#10b981'
   const typeColor   = TYPE_COLORS[spot.type] || '#6366f1'
 
   return (
     <motion.div className="relative rounded-xl p-3 flex flex-col gap-1 select-none min-w-0"
       whileHover={{ scale: 1.04, zIndex: 10 }}
       style={{
-        background: occupied
+        background: full
           ? 'rgba(239,68,68,0.12)'
           : faulty
           ? 'rgba(245,158,11,0.1)'
+          : occupied
+          ? 'rgba(249,115,22,0.1)'
           : 'rgba(16,185,129,0.08)',
-        border: `1px solid ${occupied ? 'rgba(239,68,68,0.35)' : faulty ? 'rgba(245,158,11,0.35)' : 'rgba(16,185,129,0.3)'}`,
-        boxShadow: occupied ? '0 0 12px rgba(239,68,68,0.15)' : '0 0 8px rgba(16,185,129,0.1)',
+        border: `1px solid ${full ? 'rgba(239,68,68,0.35)' : faulty ? 'rgba(245,158,11,0.35)' : occupied ? 'rgba(249,115,22,0.35)' : 'rgba(16,185,129,0.3)'}`,
+        boxShadow: full ? '0 0 12px rgba(239,68,68,0.15)' : occupied ? '0 0 10px rgba(249,115,22,0.12)' : '0 0 8px rgba(16,185,129,0.1)',
         cursor: 'default',
       }}>
-      {occupied && !faulty && <PulseRing color={statusColor} />}
+      {full && !faulty && <PulseRing color={statusColor} />}
 
       {/* Status dot */}
       <div className="absolute top-2 right-2 w-2 h-2 rounded-full"
         style={{ background: statusColor, boxShadow: `0 0 6px ${statusColor}` }} />
 
-      <p className="text-white font-bold text-sm truncate">{spot.spotNumber}</p>
+      <p className="text-white font-bold text-sm truncate">{spot.name || spot.spotNumber}</p>
+      <p className="text-gray-400 text-xs">{availableSlots}/{capacity} free</p>
+      <p className="text-gray-500 text-xs">{getSpotOccupancyPct(spot)}% occupied</p>
       <p className="text-xs truncate" style={{ color: typeColor }}>{spot.zone} · {spot.type}</p>
 
       {spot.floor !== undefined && (
@@ -90,6 +120,8 @@ function SpotTile({ spot }) {
         </div>
       )}
       {!occupied && !faulty && <span className="text-green-400 text-xs font-semibold">Free</span>}
+      {occupied && !full && !faulty && <span className="text-orange-400 text-xs font-semibold">Partly full</span>}
+      {full && !faulty && <span className="text-red-400 text-xs font-semibold">Full</span>}
       {faulty && <span className="text-yellow-400 text-xs font-semibold">⚠ Fault</span>}
 
       {battery < 30 && <BatteryIcon level={battery} />}
@@ -257,22 +289,24 @@ export default function LiveMap() {
   }, [live, fetchData])
 
   const filteredSpots = spots.filter(s => {
-    const occupied = s.sensor?.isOccupied || s.isOccupied
-    const faulty   = s.sensor?.sensorFaulty
+    const occupied = hasOccupiedSlots(s)
+    const free = hasAvailableSlots(s)
+    const faulty = isFaultySpot(s)
     if (filterZone   !== 'All' && s.zone    !== filterZone)  return false
     if (filterFloor  !== 'All' && String(s.floor ?? 0) !== filterFloor) return false
     if (filterStatus !== 'All') {
       if (filterStatus === 'occupied' && !occupied) return false
-      if (filterStatus === 'free'     && (occupied || faulty)) return false
+      if (filterStatus === 'free'     && (!free || faulty)) return false
       if (filterStatus === 'faulty'   && !faulty) return false
     }
     return true
   })
 
-  const totalOccupied = spots.filter(s => s.sensor?.isOccupied || s.isOccupied).length
-  const totalFree     = spots.filter(s => !(s.sensor?.isOccupied || s.isOccupied) && !s.sensor?.sensorFaulty).length
-  const totalFaulty   = spots.filter(s => s.sensor?.sensorFaulty).length
-  const occupancyPct  = spots.length ? Math.round((totalOccupied / spots.length) * 100) : 0
+  const totalSlots = spots.reduce((sum, s) => sum + getSpotCapacity(s), 0)
+  const totalOccupied = spots.reduce((sum, s) => sum + getOccupiedSlots(s), 0)
+  const totalFree = spots.reduce((sum, s) => sum + getAvailableSlots(s), 0)
+  const totalFaulty = spots.filter(isFaultySpot).length
+  const occupancyPct = totalSlots ? Math.round((totalOccupied / totalSlots) * 100) : 0
 
   const citySpotsWithDistance = citySpots.map((s) => {
     const [lng, lat] = s.location?.coordinates || []
@@ -420,18 +454,18 @@ export default function LiveMap() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <StatCard label="Total Spots"   value={spots.length}  color="#8b5cf6" icon="🅿️" />
+          <StatCard label="Total Slots"   value={totalSlots}    color="#8b5cf6" icon="🅿️" />
           <StatCard label="Occupied"      value={totalOccupied} color="#ef4444" icon="🚗" />
           <StatCard label="Available"     value={totalFree}     color="#10b981" icon="✅" />
           <StatCard label="Occupancy"     value={`${occupancyPct}%`} color="#f59e0b" icon="📊" />
         </div>
 
         {/* Occupancy bar */}
-        {spots.length > 0 && (
+        {totalSlots > 0 && (
           <div className="rounded-2xl p-5 mb-6" style={GLS}>
             <div className="flex justify-between items-center mb-2">
               <span className="text-white font-semibold text-sm">Lot Occupancy</span>
-              <span className="text-gray-400 text-sm">{totalOccupied}/{spots.length}</span>
+              <span className="text-gray-400 text-sm">{totalOccupied}/{totalSlots}</span>
             </div>
             <div className="h-3 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
               <motion.div className="h-full rounded-full"
@@ -440,7 +474,7 @@ export default function LiveMap() {
                 style={{ background: occupancyPct > 80 ? '#ef4444' : occupancyPct > 60 ? '#f59e0b' : '#10b981' }} />
             </div>
             <div className="flex gap-4 mt-3">
-              {[['#10b981','Free'],['#ef4444','Occupied'],['#f59e0b','Faulty']].map(([c,l]) => (
+              {[['#10b981',`Free: ${totalFree}`],['#ef4444',`Occupied: ${totalOccupied}`],['#f59e0b',`Faulty: ${totalFaulty}`]].map(([c,l]) => (
                 <div key={l} className="flex items-center gap-1.5 text-xs text-gray-400">
                   <div className="w-2.5 h-2.5 rounded-sm" style={{ background: c }} /> {l}
                 </div>

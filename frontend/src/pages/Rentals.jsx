@@ -32,8 +32,22 @@ function StatusBadge({ status }) {
   )
 }
 
-function RentalCard({ rental, mine, onEdit, onDelete, onBook, idx }) {
+function RentalCard({ rental, mine, onEdit, onDelete, onToggleStatus, onBook, idx }) {
   const [open, setOpen] = useState(false)
+  const [statusLoading, setStatusLoading] = useState(false)
+  const isActive = rental.status === 'active'
+
+  const handleToggleStatus = async (e) => {
+    e.stopPropagation()
+    if (!onToggleStatus || rental.status === 'suspended') return
+    setStatusLoading(true)
+    try {
+      await onToggleStatus(rental, isActive ? 'draft' : 'active')
+    } finally {
+      setStatusLoading(false)
+    }
+  }
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.06 }}
       className="rounded-2xl overflow-hidden" style={GLS}>
@@ -60,6 +74,22 @@ function RentalCard({ rental, mine, onEdit, onDelete, onBook, idx }) {
         </div>
         {mine ? (
           <div className="flex gap-2 ml-2" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={handleToggleStatus}
+              disabled={statusLoading || rental.status === 'suspended'}
+              className="px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+              style={{
+                background: isActive ? 'rgba(16,185,129,0.12)' : 'rgba(99,102,241,0.12)',
+                color: isActive ? '#10b981' : '#818cf8',
+                opacity: statusLoading || rental.status === 'suspended' ? 0.55 : 1,
+              }}
+              title={isActive ? 'Move listing to draft' : 'Publish listing as active'}
+            >
+              {statusLoading
+                ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-3.5 h-3.5 border-2 border-white/20 border-t-white/70 rounded-full" />
+                : isActive ? <FiCheckCircle size={13} /> : <FiClock size={13} />}
+              {isActive ? 'Active' : 'Draft'}
+            </button>
             <button onClick={() => onEdit(rental)} className="p-2 rounded-lg text-blue-400 hover:bg-blue-500/10">
               <FiEdit2 size={14} />
             </button>
@@ -272,6 +302,23 @@ export default function Rentals() {
     catch (err) { toast.error(err.response?.data?.message || 'Delete failed') }
   }
 
+  const handleToggleStatus = async (rental, status) => {
+    try {
+      const res = await updateRental(rental._id, { status })
+      const updated = res.data.data || { status }
+      setMine(prev => prev.map(r => (
+        r._id === rental._id
+          ? { ...r, ...updated, spot: typeof updated.spot === 'object' ? updated.spot : r.spot }
+          : r
+      )))
+      toast.success(status === 'active' ? 'Listing is now active and bookable' : 'Listing moved to draft')
+      if (tab === 'browse') loadBrowse()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Status update failed')
+      throw err
+    }
+  }
+
   return (
     <div className="min-h-screen" style={{ background: BG }}>
       <div className="fixed top-1/4 left-1/3 w-96 h-96 rounded-full opacity-8 blur-3xl pointer-events-none"
@@ -380,7 +427,7 @@ export default function Rentals() {
                 <div className="space-y-3">
                   {mine.map((r, i) => (
                     <RentalCard key={r._id} rental={r} mine idx={i}
-                      onEdit={setFormMode} onDelete={handleDelete} />
+                      onEdit={setFormMode} onDelete={handleDelete} onToggleStatus={handleToggleStatus} />
                   ))}
                 </div>
               )}

@@ -73,7 +73,7 @@ exports.getDashboard = async (req, res) => {
 
     const [
       totalUsers, activeUsers, newUsersToday,
-      totalSpots, occupiedSpots,
+      activeParkingSpots,
       totalBookings, bookingsToday, activeBookings,
       openAlerts, criticalAlerts,
       activeRentals,
@@ -84,8 +84,7 @@ exports.getDashboard = async (req, res) => {
       User.countDocuments({}),
       User.countDocuments({ isActive: true }),
       User.countDocuments({ createdAt: { $gte: startOfDay } }),
-      ParkingSpot.countDocuments({ isActive: true }),
-      ParkingSpot.countDocuments({ isOccupied: true }),
+      ParkingSpot.find({ status: 'active' }, 'totalSpots availableSpots').lean(),
       Booking.countDocuments({}),
       Booking.countDocuments({ createdAt: { $gte: startOfDay } }),
       Booking.countDocuments({ status: { $in: ['confirmed', 'active'] } }),
@@ -98,6 +97,19 @@ exports.getDashboard = async (req, res) => {
       ParkingSession.countDocuments({ startTime: { $gte: startOfDay } }),
       VehicleInspection.countDocuments({ createdAt: { $gte: startOfDay }, damageDetected: true }),
     ]);
+
+    const spotTotals = activeParkingSpots.reduce((totals, spot) => {
+      const total = Math.max(1, Number(spot.totalSpots) || 1);
+      const rawAvailable = Number.isFinite(Number(spot.availableSpots)) ? Number(spot.availableSpots) : total;
+      const available = Math.max(0, Math.min(total, rawAvailable));
+      const occupied = total - available;
+
+      totals.total += total;
+      totals.available += available;
+      totals.occupied += occupied;
+      return totals;
+    }, { total: 0, occupied: 0, available: 0 });
+    spotTotals.occupancyRate = spotTotals.total ? +(spotTotals.occupied / spotTotals.total * 100).toFixed(1) : 0;
 
     // Hourly occupancy for today
     const hourlyOccupancy = [];
@@ -120,7 +132,7 @@ exports.getDashboard = async (req, res) => {
       success: true,
       data: {
         users: { total: totalUsers, active: activeUsers, newToday: newUsersToday },
-        spots: { total: totalSpots, occupied: occupiedSpots, available: totalSpots - occupiedSpots, occupancyRate: totalSpots ? +(occupiedSpots / totalSpots * 100).toFixed(1) : 0 },
+        spots: spotTotals,
         bookings: { total: totalBookings, today: bookingsToday, active: activeBookings },
         sessions: { total: totalSessions, today: sessionsToday },
         alerts: { open: openAlerts, critical: criticalAlerts },
