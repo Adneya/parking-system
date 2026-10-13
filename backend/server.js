@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const mongoose = require('mongoose');
+const path = require('path');
 
 const app = express();
 
@@ -52,6 +53,16 @@ app.get('/api/health', (req, res) => {
     message: 'Parking System API is running'
   });
 });
+
+// In the single-container deployment, Express serves the compiled React app.
+// Keep this before the 404 handler so React Router routes resolve correctly.
+if (process.env.SERVE_FRONTEND === 'true') {
+  const frontendPath = path.join(__dirname, 'public');
+  app.use(express.static(frontendPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'index.html'));
+  });
+}
 
 // 404 handler
 app.use((req, res) => {

@@ -122,6 +122,49 @@ Server running on:
 - Backend: http://localhost:5000
 - Frontend: http://localhost:3000
 
+## Docker
+
+Docker Compose runs the React frontend, Express API, and MongoDB together. From
+the project root, create a local environment file and start the stack:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Open http://localhost:3000 for the application. The API is also available at
+http://localhost:5000/api/health, and MongoDB data is kept in the named
+`mongo-data` volume.
+
+Before any non-local deployment, replace `JWT_SECRET` in `.env` with a long,
+random value. To stop the containers, run `docker compose down`; add `-v` only
+when you intentionally want to remove the stored database data.
+
+### Single-service Render deployment
+
+The root `Dockerfile` builds the frontend and serves it from the Express API,
+so it deploys as one Render **Web Service**. It still needs a managed MongoDB
+database, such as MongoDB Atlas.
+
+1. Push this repository to GitHub and create a Render Web Service from it.
+2. Set the service runtime to **Docker** and use `./Dockerfile` at the project
+   root.
+3. Set the health check path to `/api/health`.
+4. Add these Render environment variables:
+
+   ```text
+   MONGODB_URI=mongodb+srv://.../parking-system
+   JWT_SECRET=<a-long-random-secret>
+   PORT=5000
+   NODE_ENV=production
+   SERVE_FRONTEND=true
+   APP_URL=https://<your-service>.onrender.com
+   CORS_ORIGIN=https://<your-service>.onrender.com
+   ```
+
+The deployed application and API will both be available from the same Render
+URL; the frontend calls `/api`, so no API hostname configuration is required.
+
 ## 📊 Database Setup
 
 ### Parking Spots
